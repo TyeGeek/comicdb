@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+import web, sys, MySQLdb
+
+host = 'localhost'
+user = 'monitor'
+password = 'monitor'
+count = ''
+
+urls = (
+  '/', 'Index'
+)
+
+app = web.application(urls, globals())
+
+render = web.template.render('templates/', base="layout")
+
+class Index(object):
+    def GET(self):
+        return render.comic_form()
+
+    def POST(self):
+	conn = MySQLdb.Connection(db='comics', host=host, user=user, passwd=password)
+	mysql = conn.cursor()
+        form = web.input(title="null", character="null")
+        if form.title != "":
+		mysql.execute("""SELECT title, volume, issue, approx_price, description FROM comickeys WHERE title LIKE '%%%s%%' """ % form.title)
+	elif form.character !="":
+		mysql.execute("""SELECT title, volume, issue, approx_price, description FROM comickeys WHERE description LIKE '%%%s%%' """ % form.character)
+	#mysql.execute(sql)
+	fields=mysql.fetchall()
+	content='<table border="1" align=left><tr><th>Title</th><th>Volume</th><th>Issue</th><th>Approx Value</th><th>Description</th></tr><tbody>'
+	for field in fields:
+		title = str(field[0])
+        	volume = str(field[1])
+        	issue = str(field[2])
+        	approx_price = str(field[3])
+        	description = str(field[4])
+        	content = content + '<tr><td>' + title + '</td><td>' + volume + '</td><td>' + issue + '</td><td>' + approx_price + '</td><td>' + description + '</td></tr>'
+	content = content + '</tbody></table>'
+	with open("comic_log", "a") as myfile:
+	    	myfile.write( web.ctx['ip'] + " | Form Char - " + form.character + "| Form Title - " + form.title + "\n")       
+	mysql.close()
+	conn.close()
+	return render.index(content = content)
+
+if __name__ == "__main__":
+    app.run()
